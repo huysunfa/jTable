@@ -1,0 +1,144 @@
+﻿
+@{
+    ViewBag.Title = "Index";
+}
+
+<h2>Index</h2>
+<link rel="stylesheet" href="https://cdn3.devexpress.com/jslib/19.2.3/css/dx.common.css">
+<link rel="stylesheet" href="https://cdn3.devexpress.com/jslib/19.2.3/css/dx.light.css">
+<script type="text/javascript" src="https://cdn3.devexpress.com/jslib/19.2.3/js/dx.all.js"></script>
+
+<div id="grid"></div>
+
+<script>
+    $(function () {
+        var URL = "https://js.devexpress.com/Demos/Mvc/api/DataGridWebApi";
+
+        var ordersStore = new DevExpress.data.CustomStore({
+            key: "@ViewBag.primaryKeyName",
+            load: function () {
+                var item = sendRequest('@ViewBag.ListUrl');
+                 return   item;
+            },
+            insert: function (values) {
+                return sendRequest('@ViewBag.AddUrl', "POST", {
+                    values:  values
+                });
+            },
+            update: function (key, values) {
+                return sendRequest('@ViewBag.UpdateUrl', "POST", {
+                    key: key,
+                    values:values
+                });
+            },
+            remove: function (key) {
+                return sendRequest('@ViewBag.DeleteUrl', "POST", {
+                    key: key
+                });
+            }
+        });
+
+        var dataGrid = $("#grid").dxDataGrid({
+            dataSource: ordersStore,
+            repaintChangesOnly: true,
+            showBorders: true,
+            editing: {
+                refreshMode: "reshape",
+                mode: "popup",
+                allowAdding: true,
+                allowUpdating: true,
+                allowDeleting: true
+            },
+            scrolling: {
+                mode: "virtual"
+            },
+            columns: @Html.Raw(ViewBag.FieldData),
+
+            summary: {
+                totalItems: [{
+                    column: "CustomerID",
+                    summaryType: "count"
+                }, {
+                    column: "Freight",
+                    valueFormat: "#0.00",
+                    summaryType: "sum"
+                }]
+            }
+        }).dxDataGrid("instance");
+
+        $("#refresh-mode").dxSelectBox({
+            items: ["full", "reshape", "repaint"],
+            value: "reshape",
+            onValueChanged: function (e) {
+                dataGrid.option("editing.refreshMode", e.value);
+            }
+        });
+
+        $("#clear").dxButton({
+            text: "Clear",
+            onClick: function () {
+                $("#requests ul").empty();
+            }
+        });
+
+        function sendRequest(url, method, data) {
+            var d = $.Deferred();
+
+            method = method || "GET";
+
+            logRequest(method, url, data);
+
+            $.ajax(url, {
+                method: method || "GET",
+                data: data,
+                cache: false,
+                xhrFields: { withCredentials: true }
+            }).done(function (result) {
+
+            d.resolve(method === "GET" ?JSON.parse(result): "");
+
+            }).fail(function (xhr) {
+                d.reject(xhr.responseJSON ? xhr.responseJSON.Message : xhr.statusText);
+            });
+
+            return d.promise();
+        }
+
+        function logRequest(method, url, data) {
+            var args = Object.keys(data || {}).map(function (key) {
+                return key + "=" + data[key];
+            }).join(" ");
+
+            var logList = $("#requests ul"),
+                time = DevExpress.localization.formatDate(new Date(), "HH:mm:ss"),
+                newItem = $("<li>").text([time, method, url.slice(URL.length), args].join(" "));
+
+            logList.prepend(newItem);
+            console.log(logList);
+        }
+    });
+</script>
+@*<script type="text/javascript">
+
+        $(document).ready(function () {
+            $('#TableContainer').jtable({
+                title: 'Record Listing',
+                paging: true, //Enable paging
+                pageSize: 10, //Set page size (default: 10)
+                sorting: true, //Enable sorting
+                defaultSorting: 'Description ASC', //Set default sorting
+                actions: {
+                    listAction: '@ViewBag.ListUrl',
+                    deleteAction: '@ViewBag.DeleteUrl',
+                    updateAction: '@ViewBag.UpdateUrl',
+                    createAction: '@ViewBag.AddUrl'
+                },
+                fields: @Html.Raw(ViewBag.FieldData)
+
+                });
+
+            //Load student list from server
+            $('#TableContainer').jtable('load');
+        });
+
+    </script>*@
